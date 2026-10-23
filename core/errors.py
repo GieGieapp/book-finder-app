@@ -1,20 +1,22 @@
+from http import HTTPStatus
 from flask import jsonify
 
 
 class DomainValidationError(Exception):
-    """Custom exception untuk pelanggaran aturan bisnis domain"""
+    """Raised when a business domain rule or invariant is violated"""
     pass
 
 
 def register_error_handlers(app):
+    """Registers standard HTTP error handlers on Flask application"""
     @app.errorhandler(DomainValidationError)
-    def handle_domain_validation(err):
-        return jsonify({"error": str(err)}), 400
+    def handle_validation(err):
+        return jsonify({"error": str(err)}), HTTPStatus.BAD_REQUEST
 
     @app.errorhandler(404)
-    def handle_404(err):
-        return jsonify({"error": "Resource yang diminta tidak ditemukan."}), 404
+    def handle_not_found(err):
+        return jsonify({"error": "Resource not found."}), HTTPStatus.NOT_FOUND
 
     @app.errorhandler(500)
-    def handle_500(err):
-        return jsonify({"error": "Terjadi kesalahan internal pada server."}), 500
+    def handle_server_error(err):
+        return jsonify({"error": "Internal server error."}), HTTPStatus.INTERNAL_SERVER_ERROR

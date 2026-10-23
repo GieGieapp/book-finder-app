@@ -1,10 +1,4 @@
-# 📚 Book Finder & Wishlist App (Domain-Driven Design)
 
-A modern, resilient book catalog search engine powered by **Google Books API** with an automatic **Open Library** failover mechanism and **MongoDB**-backed personal wishlist management. Built with **Domain-Driven Design (DDD) / Package-by-Feature Architecture** using Python Flask.
-
----
-
-## 🏛️ Architecture Overview: Domain-Driven Design (DDD)
 
 The project structure is organized by **Bounded Context & Business Domain**, rather than arbitrary horizontal technical layers. This guarantees **high cohesion**, **loose coupling**, and seamless scalability for enterprise systems:
 
