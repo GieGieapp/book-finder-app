@@ -41,7 +41,16 @@ def create_app(config_class=None):
     app.register_blueprint(book_bp)
     app.register_blueprint(wishlist_bp)
 
-    # 6. Health Check Endpoint (Readiness & Liveness Probe)
+    # 6. HTTP Security Headers
+    @app.after_request
+    def set_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+    # 7. Health Check Endpoint (Readiness & Liveness Probe)
     @app.route("/health", methods=["GET"])
     @app.route("/api/health", methods=["GET"])
     def health_check():
