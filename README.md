@@ -10,7 +10,22 @@ pinned: false
 
 # Book Finder App
 
-A book catalog search and wishlist management application built with Flask and MongoDB.
+A full-stack book catalog search and personal wishlist management web application built with Python (Flask) and MongoDB.
+
+[![CI Test Suite](https://github.com/GieGieapp/book-finder-app/actions/workflows/ci.yml/badge.svg)](https://github.com/GieGieapp/book-finder-app/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-success?style=flat&logo=vercel)](https://book-finder-app-ochre.vercel.app/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.0.0-black?logo=flask)](https://flask.palletsprojects.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)](https://www.mongodb.com/)
+[![Tests](https://img.shields.io/badge/Unit%20Tests-52%20Passed-brightgreen)](#testing)
+
+---
+
+## Live Application
+
+The production application is deployed and publicly accessible:
+- **Live Demo:** [https://book-finder-app-ochre.vercel.app/](https://book-finder-app-ochre.vercel.app/)
+- **API Health Check:** [https://book-finder-app-ochre.vercel.app/health](https://book-finder-app-ochre.vercel.app/health)
 
 ---
 
