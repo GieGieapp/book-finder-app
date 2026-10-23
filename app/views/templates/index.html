@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencarian Buku &amp; Wishlist | Book Finder App</title>
+    <meta name="description" content="Temukan ribuan buku favorit Anda melalui Google Books API dan simpan ke wishlist pribadi Anda dengan mudah dan cepat.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bulma CSS CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Header Hero -->
+    <header class="hero-banner">
+        <div class="container has-text-centered">
+            <h1 class="title is-2 hero-title">
+                <i class="fa-solid fa-book-bookmark mr-2"></i> Book Finder &amp; Wishlist
+            </h1>
+            <p class="subtitle is-6 hero-subtitle">
+                Eksplorasi ribuan judul buku melalui Google Books API dan simpan buku impianmu ke dalam koleksi wishlist pribadi.
+            </p>
+        </div>
+    </header>
+
+    <!-- Navigasi Tabs -->
+    <div class="container custom-tabs-container has-text-centered">
+        <nav class="custom-tabs" aria-label="Navigasi Halaman" role="tablist">
+            <button class="tab-btn is-active" id="tab-search" role="tab" aria-selected="true" aria-controls="view-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <span>Cari Buku</span>
+            </button>
+            <button class="tab-btn" id="tab-wishlist" role="tab" aria-selected="false" aria-controls="view-wishlist">
+                <i class="fa-solid fa-heart"></i>
+                <span>Wishlist Saya</span>
+                <span class="badge-counter" id="wishlist-counter">0</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container py-5 px-4" style="flex: 1; max-width: 1200px;">
+        
+        <!-- ================= VIEW: PENCARIAN BUKU ================= -->
+        <section id="view-search" role="tabpanel" aria-labelledby="tab-search">
+            <!-- Form Pencarian -->
+            <div class="search-card">
+                <form id="search-form" onsubmit="return false;">
+                    <div class="field is-grouped">
+                        <div class="control is-expanded" style="position: relative;">
+                            <i class="fa-solid fa-magnifying-glass search-icon-left"></i>
+                            <input 
+                                id="search-input" 
+                                class="input search-input" 
+                                type="text" 
+                                placeholder="Ketik judul buku, nama penulis, topik, atau kata kunci..." 
+                                autocomplete="off"
+                                required
+                            >
+                        </div>
+                        <div class="control">
+                            <button id="btn-search-submit" class="button btn-search" type="submit">
+                                <i class="fa-solid fa-arrow-right mr-2"></i> Cari
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Header Hasil Pencarian -->
+            <div id="search-result-header" class="is-hidden mb-4 is-flex is-justify-content-space-between is-align-items-center">
+                <h2 class="section-heading-title mb-0" id="search-result-title">Hasil Pencarian</h2>
+                <span class="tag is-info is-light is-rounded" id="search-result-count">0 buku ditemukan</span>
+            </div>
+
+            <!-- Wadah Loading -->
+            <div id="search-loading" class="status-box is-hidden">
+                <div class="status-icon">
+                    <i class="fa-solid fa-spinner fa-spin has-text-primary"></i>
+                </div>
+                <h3 class="status-title">Mencari Buku...</h3>
+                <p class="status-text">Menghubungi Google Books API untuk mengambil daftar buku terbaik untuk Anda.</p>
+            </div>
+
+            <!-- State Awal / Kosong -->
+            <div id="search-empty-state" class="status-box">
+                <div class="status-icon">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                </div>
+                <h3 class="status-title">Mulai Mencari Buku</h3>
+                <p class="status-text">Ketik kata kunci atau nama penulis favorit Anda pada kotak pencarian di atas untuk menemukan buku.</p>
+            </div>
+
+            <!-- Grid Kartu Buku Hasil Pencarian -->
+            <div id="search-books-grid" class="columns is-multiline is-variable is-4">
+                <!-- Diisi via JavaScript -->
+            </div>
+        </section>
+
+        <!-- ================= VIEW: WISHLIST SAYA ================= -->
+        <section id="view-wishlist" class="is-hidden" role="tabpanel" aria-labelledby="tab-wishlist">
+            <div class="wishlist-section-header">
+                <div>
+                    <h2 class="section-heading-title">
+                        <i class="fa-solid fa-bookmark has-text-primary mr-2"></i> Daftar Wishlist Anda
+                    </h2>
+                    <p class="section-heading-subtitle">Buku-buku yang disimpan tersimpan aman di database MongoDB.</p>
+                </div>
+                <button id="btn-refresh-wishlist" class="button is-small is-light is-rounded" title="Segarkan Wishlist">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Wadah Loading Wishlist -->
+            <div id="wishlist-loading" class="status-box is-hidden">
+                <div class="status-icon">
+                    <i class="fa-solid fa-spinner fa-spin has-text-primary"></i>
+                </div>
+                <h3 class="status-title">Memuat Wishlist...</h3>
+                <p class="status-text">Mengambil data buku favorit Anda dari MongoDB.</p>
+            </div>
+
+            <!-- Wishlist Kosong -->
+            <div id="wishlist-empty-state" class="status-box is-hidden">
+                <div class="status-icon">
+                    <i class="fa-regular fa-heart"></i>
+                </div>
+                <h3 class="status-title">Wishlist Anda Masih Kosong</h3>
+                <p class="status-text mb-4">Belum ada buku yang disimpan. Cari buku favoritmu dan tekan tombol "Tambah ke Wishlist"!</p>
+                <button class="button is-primary is-rounded" id="btn-go-search">
+                    <i class="fa-solid fa-magnifying-glass mr-2"></i> Cari Buku Sekarang
+                </button>
+            </div>
+
+            <!-- Grid Kartu Buku Wishlist -->
+            <div id="wishlist-books-grid" class="columns is-multiline is-variable is-4">
+                <!-- Diisi via JavaScript -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" aria-live="polite"></div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>
+            <strong>Book Finder App</strong>
+        </p>
+    </footer>
+
+    <!-- Rater JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/rater-js@1.0.1/index.js"></script>
+    
+    <!-- Custom Application Script -->
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
