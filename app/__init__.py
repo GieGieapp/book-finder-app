@@ -41,13 +41,17 @@ def create_app(config_class=None):
     app.register_blueprint(book_bp)
     app.register_blueprint(wishlist_bp)
 
-    # 6. HTTP Security Headers
+    # 6. HTTP Security & Cache Headers
     @app.after_request
     def set_security_headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if response.mimetype == "application/json":
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         return response
 
     # 7. Health Check Endpoint (Readiness & Liveness Probe)

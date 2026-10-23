@@ -120,6 +120,9 @@ function switchTab(target) {
 
         dom.viewSearch.classList.remove('is-hidden');
         dom.viewWishlist.classList.add('is-hidden');
+
+        // Immediately sync search buttons state with current wishlist IDs
+        updateSearchButtonsState();
     } else {
         state.currentTab = 'wishlist';
         dom.tabWishlist.classList.add('is-active');
@@ -148,10 +151,10 @@ async function fetchWishlist(showLoader = true) {
     state.wishlistPage = 1;
 
     try {
-        // 1. Fetch total count & all wishlist IDs in parallel
+        // 1. Fetch total count & all wishlist IDs in parallel with cache-buster
         const [countRes, idsRes] = await Promise.all([
-            fetch('/api/wishlist/count'),
-            fetch('/api/wishlist/ids')
+            fetch(`/api/wishlist/count?_t=${Date.now()}`),
+            fetch(`/api/wishlist/ids?_t=${Date.now()}`)
         ]);
 
         if (countRes.ok) {
@@ -297,7 +300,19 @@ async function handleSearch(keyword) {
     dom.searchBooksGrid.innerHTML = '';
 
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(cleanKeyword)}&page=1`);
+        // Fetch search results and fresh wishlist IDs in parallel
+        const [response, idsRes] = await Promise.all([
+            fetch(`/api/search?q=${encodeURIComponent(cleanKeyword)}&page=1`),
+            fetch(`/api/wishlist/ids?_t=${Date.now()}`)
+        ]);
+
+        if (idsRes.ok) {
+            const idsData = await idsRes.json();
+            if (Array.isArray(idsData.ids)) {
+                state.wishlistIdSet = new Set(idsData.ids);
+            }
+        }
+
         if (!response.ok) {
             throw new Error(`Book search failed with status: ${response.status}`);
         }
@@ -407,7 +422,7 @@ function renderSearchResults(books, append = false) {
  */
 function createBookCardHTML(book, viewType) {
     const authors = Array.isArray(book.authors) ? book.authors.join(', ') : (book.authors || 'Unknown Author');
-    const isInWishlist = state.wishlistIdSet.has(book.id) || state.wishlistMap.has(book.id);
+    const isInWishlist = state.wishlistIdSet.has(book.id);
     const ratingValue = parseFloat(book.rating) || 0;
     const thumbnail = book.thumbnail || 'https://via.placeholder.com/128x192?text=No+Cover';
     const description = book.description || 'No summary description available for this book.';
@@ -527,20 +542,20 @@ function updateSearchButtonsState() {
     const buttons = dom.searchBooksGrid.querySelectorAll('[id^="btn-wishlist-"]');
     buttons.forEach(btn => {
         const bookId = btn.id.replace('btn-wishlist-', '');
-        if (state.wishlistIdSet.has(bookId) || state.wishlistMap.has(bookId)) {
+        if (state.wishlistIdSet.has(bookId)) {
             btn.className = 'button is-small btn-action-primary btn-in-wishlist';
             btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
             btn.disabled = true;
             btn.removeAttribute('onclick');
         } else {
-            const book = state.searchResults.find(b => b.id === bookId);
+            const book = state.booksById.get(bookId) || state.searchResults.find(b => b.id === bookId);
+            btn.className = 'button is-small is-primary is-outlined btn-action-primary';
+            btn.innerHTML = '<i class="fa-regular fa-heart mr-1"></i> Wishlist';
+            btn.disabled = false;
+            btn.setAttribute('data-book-id', bookId);
+            btn.onclick = function() { addToWishlist(bookId); };
             if (book) {
                 state.booksById.set(book.id, book);
-                btn.className = 'button is-small is-primary is-outlined btn-action-primary';
-                btn.innerHTML = '<i class="fa-regular fa-heart mr-1"></i> Wishlist';
-                btn.disabled = false;
-                btn.setAttribute('data-book-id', bookId);
-                btn.onclick = function() { addToWishlist(bookId); };
             }
         }
     });
@@ -552,8 +567,8 @@ function updateSearchButtonsState() {
 async function fetchWishlistCount() {
     try {
         const [countRes, idsRes] = await Promise.all([
-            fetch('/api/wishlist/count'),
-            fetch('/api/wishlist/ids')
+            fetch(`/api/wishlist/count?_t=${Date.now()}`),
+            fetch(`/api/wishlist/ids?_t=${Date.now()}`)
         ]);
         if (countRes.ok) {
             const countData = await countRes.json();
@@ -710,7 +725,8 @@ async function removeFromWishlist(bookId) {
             }
 
             updateSearchButtonsState();
-            fetchWishlistCount();
+            await fetchWishlistCount();
+            updateSearchButtonsState();
         } else {
             showToast(result.error || 'Failed to remove book.', 'error');
         }
