@@ -84,17 +84,6 @@ book-finder-app/
 
 ---
 
-## Key Architectural Decisions
-
-1. **Package-by-Feature (DDD)**: Code is organized around business features (`books`, `wishlist`, `views`) rather than horizontal technical layers, ensuring high cohesion and low coupling.
-2. **Entity and Schema Separation**: Domain entities (`Book`, `WishlistItem`) handle business logic and remain decoupled from HTTP serialization schemas.
-3. **Graceful Failover**: Book queries prioritize Google Books API and automatically fall back to Open Library API when queries return empty.
-4. **Network Optimization**: `BaseHttpClient` uses `requests.Session` Keep-Alive pooling to reuse TCP connections, with field filtering applied on external APIs to reduce response latency.
-5. **Database Indexing and Idempotency**: The MongoDB wishlist collection enforces a unique index on `id` for O(1) lookups and idempotent upserts.
-6. **Strict Mock Unit Testing**: All 52 unit tests use `unittest.mock.create_autospec` to validate interface contracts without touching live databases or networks.
-
----
-
 ## Quick Start
 
 ### 1. Environment Setup
