@@ -28,10 +28,21 @@ class MongoWishlistRepository:
             upsert=True
         )
 
-    def find_all(self) -> List[WishlistItem]:
-        """Retrieves the complete list of wishlist items from database"""
+    def find_all(self, limit: Optional[int] = None, skip: int = 0) -> List[WishlistItem]:
+        """Retrieves wishlist items from database with optional pagination"""
         cursor = self.collection.find({}, {"_id": False})
+        if skip > 0:
+            cursor = cursor.skip(skip)
+        if limit is not None and limit > 0:
+            cursor = cursor.limit(limit)
         return [item for doc in cursor if (item := self._document_to_entity(doc))]
+
+    def count_all(self) -> int:
+        """Returns total count of wishlist items in database"""
+        try:
+            return self.collection.count_documents({})
+        except Exception:
+            return 0
 
     def delete_by_id(self, book_id: str) -> bool:
         """Deletes a wishlist item by book ID"""

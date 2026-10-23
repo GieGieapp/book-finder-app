@@ -32,10 +32,19 @@ class WishlistService:
         # 3. Return response data contract (Schema)
         return self._entity_to_schema(item).to_dict()
 
-    def get_all_wishlists(self) -> List[dict]:
-        """Retrieves all wishlist items as a list of schema dictionaries"""
-        items: List[WishlistItem] = self.repository.find_all()
+    def get_all_wishlists(self, limit: Optional[int] = None, skip: int = 0) -> List[dict]:
+        """Retrieves all wishlist items as a list of schema dictionaries with optional pagination"""
+        if limit is not None:
+            items: List[WishlistItem] = self.repository.find_all(limit=limit, skip=skip)
+        else:
+            items: List[WishlistItem] = self.repository.find_all()
         return [self._entity_to_schema(item).to_dict() for item in items]
+
+    def count_all_wishlists(self) -> int:
+        """Returns total count of wishlist items in database"""
+        if hasattr(self.repository, "count_all"):
+            return self.repository.count_all()
+        return len(self.get_all_wishlists())
 
     def remove_from_wishlist(self, book_id: str) -> bool:
         """Removes a book from the wishlist by book ID"""

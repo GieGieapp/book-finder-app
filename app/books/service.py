@@ -9,6 +9,7 @@ from core.constants import (
 )
 from core.logger import get_logger
 from infrastructure.http_client import BaseHttpClient
+from infrastructure.circuit_breaker import CircuitBreaker
 from .models import Book
 from .schemas import BookSchema
 
@@ -19,6 +20,7 @@ class GoogleBooksGateway(BaseHttpClient):
     """
     HTTP Client for remote external book providers.
     Inherits centralized BaseHttpClient for automated timeout, headers, and error logging.
+    Equipped with a Circuit Breaker to prevent cascading delays during upstream outages.
     """
 
     def __init__(
@@ -28,19 +30,32 @@ class GoogleBooksGateway(BaseHttpClient):
         timeout: Optional[int] = None,
         api_key: Optional[str] = None,
         user_agent: Optional[str] = None,
+        circuit_breaker: Optional[CircuitBreaker] = None,
     ):
         super().__init__(timeout=timeout, user_agent=user_agent)
         self.google_books_url = google_books_url or os.getenv("GOOGLE_BOOKS_API_URL", DEFAULT_GOOGLE_BOOKS_API_URL)
         self.open_library_url = open_library_url or os.getenv("OPEN_LIBRARY_API_URL", DEFAULT_OPEN_LIBRARY_API_URL)
         self.api_key = api_key if api_key is not None else os.getenv("GOOGLE_BOOKS_API_KEY", "").strip()
+        self.circuit_breaker = circuit_breaker or CircuitBreaker(
+            name="GoogleBooksAPI", failure_threshold=3, recovery_timeout=30.0
+        )
 
     def fetch_from_google(self, keyword: str, max_results: int = DEFAULT_SEARCH_LIMIT, start_index: int = 0) -> List[Dict[str, Any]]:
-        """Executes pure HTTP GET to Google Books API and returns raw items"""
+        """Executes pure HTTP GET to Google Books API with Circuit Breaker protection"""
+        if not self.circuit_breaker.allow_request():
+            logger.warning("Circuit breaker is OPEN for Google Books API. Fast-failing to fallback catalog.")
+            return []
+
         params = {"q": keyword, "maxResults": max_results, "startIndex": start_index}
         if self.api_key:
             params["key"] = self.api_key
 
         data = self.get_json(self.google_books_url, params=params)
+        if data is None:
+            self.circuit_breaker.record_failure()
+            return []
+
+        self.circuit_breaker.record_success()
         return data.get("items", []) if isinstance(data, dict) else []
 
     def fetch_from_open_library(self, keyword: str, limit: int = DEFAULT_SEARCH_LIMIT, offset: int = 0) -> List[Dict[str, Any]]:

@@ -12,9 +12,28 @@ wishlist_service = WishlistService()
 @wishlist_bp.route('/wishlist', methods=['GET'])
 @wishlist_bp.route('/api/wishlist', methods=['GET'])
 def get_wishlists():
-    """Retrieves all book items in the wishlist"""
-    items = wishlist_service.get_all_wishlists()
+    """Retrieves book items in the wishlist with pagination support"""
+    page_param = request.args.get('page')
+    limit_param = request.args.get('limit')
+    if page_param or limit_param:
+        try:
+            page = max(1, int(page_param or 1))
+            limit = max(1, min(100, int(limit_param or 20)))
+            skip = (page - 1) * limit
+            items = wishlist_service.get_all_wishlists(limit=limit, skip=skip)
+        except (ValueError, TypeError):
+            items = wishlist_service.get_all_wishlists()
+    else:
+        items = wishlist_service.get_all_wishlists()
     return jsonify(items), HTTPStatus.OK
+
+
+@wishlist_bp.route('/wishlist/count', methods=['GET'])
+@wishlist_bp.route('/api/wishlist/count', methods=['GET'])
+def get_wishlist_count():
+    """Returns the total number of books saved in the wishlist"""
+    count = wishlist_service.count_all_wishlists()
+    return jsonify({"count": count}), HTTPStatus.OK
 
 
 @wishlist_bp.route('/wishlist', methods=['POST'])

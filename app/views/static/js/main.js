@@ -7,6 +7,8 @@ const state = {
     currentTab: 'search',
     lastSearchKeyword: '',
     currentPage: 1,
+    wishlistPage: 1,
+    totalWishlistCount: 0,
     searchResults: [],
     wishlistMap: new Map() // bookId -> bookObject
 };
@@ -37,6 +39,8 @@ const dom = {
     wishlistLoading: document.getElementById('wishlist-loading'),
     wishlistEmptyState: document.getElementById('wishlist-empty-state'),
     wishlistBooksGrid: document.getElementById('wishlist-books-grid'),
+    wishlistPagination: document.getElementById('wishlist-pagination'),
+    btnLoadMoreWishlist: document.getElementById('btn-load-more-wishlist'),
     btnGoSearch: document.getElementById('btn-go-search'),
     
     // Toast Container
@@ -130,17 +134,29 @@ function switchTab(target) {
 }
 
 /**
- * Fetches wishlist items from the backend API
+ * Fetches wishlist items from the backend API with pagination
  */
 async function fetchWishlist(showLoader = true) {
     if (showLoader) {
         dom.wishlistLoading.classList.remove('is-hidden');
         dom.wishlistEmptyState.classList.add('is-hidden');
         dom.wishlistBooksGrid.innerHTML = '';
+        if (dom.wishlistPagination) dom.wishlistPagination.classList.add('is-hidden');
     }
 
+    state.wishlistPage = 1;
+
     try {
-        const response = await fetch('/api/wishlist');
+        // 1. Fetch total count
+        const countRes = await fetch('/api/wishlist/count');
+        if (countRes.ok) {
+            const countData = await countRes.json();
+            state.totalWishlistCount = countData.count || 0;
+            dom.wishlistCounter.textContent = state.totalWishlistCount;
+        }
+
+        // 2. Fetch first page of wishlist items (20 items)
+        const response = await fetch('/api/wishlist?page=1&limit=20');
         if (!response.ok) {
             throw new Error(`HTTP error ${response.status}`);
         }
@@ -151,14 +167,23 @@ async function fetchWishlist(showLoader = true) {
             state.wishlistMap.set(book.id, book);
         });
 
-        // Update badge counter
-        dom.wishlistCounter.textContent = state.wishlistMap.size;
+        // Fallback counter if count API was unavailable
+        if (!state.totalWishlistCount) {
+            dom.wishlistCounter.textContent = state.wishlistMap.size;
+        }
 
         // Render if currently on wishlist tab
         if (state.currentTab === 'wishlist') {
-            renderWishlistGrid(data);
+            renderWishlistGrid(data, false);
+
+            if (dom.wishlistPagination) {
+                if (data.length >= 20 && state.totalWishlistCount > 20) {
+                    dom.wishlistPagination.classList.remove('is-hidden');
+                } else {
+                    dom.wishlistPagination.classList.add('is-hidden');
+                }
+            }
         } else {
-            // Update button states on search view
             updateSearchButtonsState();
         }
     } catch (err) {
@@ -170,13 +195,56 @@ async function fetchWishlist(showLoader = true) {
 }
 
 /**
+ * Loads additional wishlist page via pagination
+ */
+async function loadMoreWishlist() {
+    if (!dom.btnLoadMoreWishlist) return;
+
+    state.wishlistPage++;
+    dom.btnLoadMoreWishlist.classList.add('is-loading');
+
+    try {
+        const response = await fetch(`/api/wishlist?page=${state.wishlistPage}&limit=20`);
+        if (!response.ok) {
+            throw new Error(`Load more wishlist failed with status: ${response.status}`);
+        }
+        const newItems = await response.json();
+
+        if (!newItems || newItems.length === 0) {
+            dom.wishlistPagination.classList.add('is-hidden');
+            showToast('Semua item wishlist telah ditampilkan.', 'info');
+            return;
+        }
+
+        newItems.forEach(book => {
+            state.wishlistMap.set(book.id, book);
+        });
+
+        renderWishlistGrid(newItems, true);
+
+        if (newItems.length < 20) {
+            dom.wishlistPagination.classList.add('is-hidden');
+            showToast('Semua item wishlist telah ditampilkan.', 'info');
+        }
+    } catch (err) {
+        console.error('Error loading more wishlist:', err);
+        showToast('Gagal memuat wishlist tambahan.', 'error');
+    } finally {
+        dom.btnLoadMoreWishlist.classList.remove('is-loading');
+    }
+}
+
+/**
  * Renders book cards on the Wishlist tab grid
  */
-function renderWishlistGrid(books) {
-    dom.wishlistBooksGrid.innerHTML = '';
+function renderWishlistGrid(books, append = false) {
+    if (!append) {
+        dom.wishlistBooksGrid.innerHTML = '';
+    }
 
-    if (!books || books.length === 0) {
+    if (!append && (!books || books.length === 0)) {
         dom.wishlistEmptyState.classList.remove('is-hidden');
+        if (dom.wishlistPagination) dom.wishlistPagination.classList.add('is-hidden');
         return;
     }
 
@@ -565,9 +633,14 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSearch(dom.searchInput.value);
     });
 
-    // Load More Button (Pagination)
+    // Load More Button (Book Search Pagination)
     if (dom.btnLoadMore) {
         dom.btnLoadMore.addEventListener('click', loadMoreBooks);
+    }
+
+    // Load More Button (Wishlist Pagination)
+    if (dom.btnLoadMoreWishlist) {
+        dom.btnLoadMoreWishlist.addEventListener('click', loadMoreWishlist);
     }
 
     // Initial load: retrieve initial wishlist counter

@@ -171,5 +171,57 @@ class TestGoogleBooksGateway(unittest.TestCase):
         self.assertEqual(docs, [])
 
 
+class TestCircuitBreaker(unittest.TestCase):
+    def test_circuit_breaker_initial_state_closed_positive(self):
+        from infrastructure.circuit_breaker import CircuitBreaker, CircuitState
+        cb = CircuitBreaker(name="TestCB", failure_threshold=3, recovery_timeout=10.0)
+        self.assertEqual(cb.state, CircuitState.CLOSED)
+        self.assertTrue(cb.allow_request())
+
+    def test_circuit_breaker_trips_to_open_after_threshold_negative(self):
+        from infrastructure.circuit_breaker import CircuitBreaker, CircuitState
+        cb = CircuitBreaker(name="TestCB", failure_threshold=3, recovery_timeout=10.0)
+        cb.record_failure()
+        self.assertEqual(cb.state, CircuitState.CLOSED)
+        cb.record_failure()
+        self.assertEqual(cb.state, CircuitState.CLOSED)
+        cb.record_failure()
+        self.assertEqual(cb.state, CircuitState.OPEN)
+        self.assertFalse(cb.allow_request())
+
+    def test_circuit_breaker_fast_fails_google_gateway(self):
+        from infrastructure.circuit_breaker import CircuitBreaker, CircuitState
+        cb = CircuitBreaker(name="TestCB", failure_threshold=2, recovery_timeout=60.0)
+        gateway = GoogleBooksGateway(circuit_breaker=cb)
+        gateway.get_json = MagicMock(return_value=None)
+
+        # 2 failures trip circuit
+        gateway.fetch_from_google("fail1")
+        gateway.fetch_from_google("fail2")
+        self.assertEqual(cb.state, CircuitState.OPEN)
+
+        # 3rd call should fast-fail without calling get_json
+        gateway.get_json.reset_mock()
+        items = gateway.fetch_from_google("fast_fail")
+        self.assertEqual(items, [])
+        gateway.get_json.assert_not_called()
+
+    def test_circuit_breaker_half_open_transition_positive(self):
+        import time
+        from infrastructure.circuit_breaker import CircuitBreaker, CircuitState
+        cb = CircuitBreaker(name="TestCB", failure_threshold=1, recovery_timeout=0.01)
+        cb.record_failure()
+        self.assertEqual(cb.state, CircuitState.OPEN)
+
+        # Wait recovery timeout
+        time.sleep(0.02)
+        self.assertTrue(cb.allow_request())
+        self.assertEqual(cb.state, CircuitState.HALF_OPEN)
+
+        # Success resets to CLOSED
+        cb.record_success()
+        self.assertEqual(cb.state, CircuitState.CLOSED)
+
+
 if __name__ == "__main__":
     unittest.main()

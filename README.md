@@ -7,7 +7,7 @@ A full-stack book catalog search and personal wishlist management web applicatio
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-black?logo=flask)](https://flask.palletsprojects.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb)](https://www.mongodb.com/)
-[![Tests](https://img.shields.io/badge/Unit%20Tests-52%20Passed-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/Unit%20Tests-56%20Passed-brightgreen)](#testing)
 
 ---
 
