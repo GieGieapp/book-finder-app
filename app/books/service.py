@@ -34,20 +34,21 @@ class GoogleBooksGateway(BaseHttpClient):
         self.open_library_url = open_library_url or os.getenv("OPEN_LIBRARY_API_URL", DEFAULT_OPEN_LIBRARY_API_URL)
         self.api_key = api_key if api_key is not None else os.getenv("GOOGLE_BOOKS_API_KEY", "").strip()
 
-    def fetch_from_google(self, keyword: str, max_results: int = DEFAULT_SEARCH_LIMIT) -> List[Dict[str, Any]]:
+    def fetch_from_google(self, keyword: str, max_results: int = DEFAULT_SEARCH_LIMIT, start_index: int = 0) -> List[Dict[str, Any]]:
         """Executes pure HTTP GET to Google Books API and returns raw items"""
-        params = {"q": keyword, "maxResults": max_results}
+        params = {"q": keyword, "maxResults": max_results, "startIndex": start_index}
         if self.api_key:
             params["key"] = self.api_key
 
         data = self.get_json(self.google_books_url, params=params)
         return data.get("items", []) if isinstance(data, dict) else []
 
-    def fetch_from_open_library(self, keyword: str, limit: int = DEFAULT_SEARCH_LIMIT) -> List[Dict[str, Any]]:
+    def fetch_from_open_library(self, keyword: str, limit: int = DEFAULT_SEARCH_LIMIT, offset: int = 0) -> List[Dict[str, Any]]:
         """Executes optimized HTTP GET to Open Library API and returns raw docs"""
         params = {
             "q": keyword,
             "limit": limit,
+            "offset": offset,
             "fields": DEFAULT_OPEN_LIBRARY_FIELDS,
         }
         data = self.get_json(self.open_library_url, params=params)
@@ -68,15 +69,18 @@ class BookService:
         else:
             self.repository = repository
 
-    def search_books(self, keyword: str) -> List[dict]:
+    def search_books(self, keyword: str, start_index: int = 0) -> List[dict]:
         clean_keyword = keyword.strip() if keyword else ""
         if not clean_keyword:
             return []
 
-        logger.info("Starting book search with keyword: '%s'", clean_keyword)
+        logger.info("Starting book search with keyword: '%s' (startIndex: %d)", clean_keyword, start_index)
 
         # 1. Query external APIs via Repository to obtain Domain Entities (Book)
-        books: List[Book] = self.repository.search(clean_keyword)
+        if start_index > 0:
+            books: List[Book] = self.repository.search(clean_keyword, start_index=start_index)
+        else:
+            books: List[Book] = self.repository.search(clean_keyword)
 
         # 2. Transform: Entity (Book) -> Response Schema (BookSchema)
         schemas: List[BookSchema] = [

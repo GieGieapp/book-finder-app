@@ -6,6 +6,7 @@
 const state = {
     currentTab: 'search',
     lastSearchKeyword: '',
+    currentPage: 1,
     searchResults: [],
     wishlistMap: new Map() // bookId -> bookObject
 };
@@ -28,6 +29,8 @@ const dom = {
     searchLoading: document.getElementById('search-loading'),
     searchEmptyState: document.getElementById('search-empty-state'),
     searchBooksGrid: document.getElementById('search-books-grid'),
+    searchPagination: document.getElementById('search-pagination'),
+    btnLoadMore: document.getElementById('btn-load-more'),
     
     // Wishlist View Elements
     btnRefreshWishlist: document.getElementById('btn-refresh-wishlist'),
@@ -201,23 +204,34 @@ async function handleSearch(keyword) {
 
     const cleanKeyword = keyword.trim();
     state.lastSearchKeyword = cleanKeyword;
+    state.currentPage = 1;
 
     // UI Updates
     dom.btnSearchSubmit.classList.add('is-loading');
     dom.searchLoading.classList.remove('is-hidden');
     dom.searchEmptyState.classList.add('is-hidden');
     dom.searchResultHeader.classList.add('is-hidden');
+    if (dom.searchPagination) dom.searchPagination.classList.add('is-hidden');
     dom.searchBooksGrid.innerHTML = '';
 
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(cleanKeyword)}`);
+        const response = await fetch(`/api/search?q=${encodeURIComponent(cleanKeyword)}&page=1`);
         if (!response.ok) {
             throw new Error(`Book search failed with status: ${response.status}`);
         }
         const books = await response.json();
         state.searchResults = books;
 
-        renderSearchResults(books);
+        renderSearchResults(books, false);
+
+        // Show pagination button if there are 20 books (indicating more might be available)
+        if (dom.searchPagination) {
+            if (books.length >= 20) {
+                dom.searchPagination.classList.remove('is-hidden');
+            } else {
+                dom.searchPagination.classList.add('is-hidden');
+            }
+        }
     } catch (err) {
         console.error('Error during book search:', err);
         showToast('Error searching for books. Please check network connection.', 'error');
@@ -229,12 +243,52 @@ async function handleSearch(keyword) {
 }
 
 /**
+ * Loads additional search results page via pagination
+ */
+async function loadMoreBooks() {
+    if (!state.lastSearchKeyword || !dom.btnLoadMore) return;
+
+    state.currentPage++;
+    dom.btnLoadMore.classList.add('is-loading');
+
+    try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(state.lastSearchKeyword)}&page=${state.currentPage}`);
+        if (!response.ok) {
+            throw new Error(`Load more failed with status: ${response.status}`);
+        }
+        const newBooks = await response.json();
+
+        if (!newBooks || newBooks.length === 0) {
+            dom.searchPagination.classList.add('is-hidden');
+            showToast('Semua buku untuk pencarian ini telah ditampilkan.', 'info');
+            return;
+        }
+
+        // Append to existing results
+        state.searchResults = state.searchResults.concat(newBooks);
+        renderSearchResults(newBooks, true);
+
+        if (newBooks.length < 20) {
+            dom.searchPagination.classList.add('is-hidden');
+            showToast('Semua buku untuk pencarian ini telah ditampilkan.', 'info');
+        }
+    } catch (err) {
+        console.error('Error loading more books:', err);
+        showToast('Gagal memuat buku tambahan.', 'error');
+    } finally {
+        dom.btnLoadMore.classList.remove('is-loading');
+    }
+}
+
+/**
  * Renders search results on the Search tab grid
  */
-function renderSearchResults(books) {
-    dom.searchBooksGrid.innerHTML = '';
+function renderSearchResults(books, append = false) {
+    if (!append) {
+        dom.searchBooksGrid.innerHTML = '';
+    }
 
-    if (!books || books.length === 0) {
+    if (!append && (!books || books.length === 0)) {
         dom.searchResultHeader.classList.remove('is-hidden');
         dom.searchResultTitle.textContent = `Search: "${state.lastSearchKeyword}"`;
         dom.searchResultCount.textContent = '0 books';
@@ -253,7 +307,7 @@ function renderSearchResults(books) {
 
     dom.searchResultHeader.classList.remove('is-hidden');
     dom.searchResultTitle.textContent = `Results for "${state.lastSearchKeyword}"`;
-    dom.searchResultCount.textContent = `${books.length} books found`;
+    dom.searchResultCount.textContent = `${state.searchResults.length} books found`;
 
     books.forEach(book => {
         const col = document.createElement('div');
@@ -510,6 +564,11 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         handleSearch(dom.searchInput.value);
     });
+
+    // Load More Button (Pagination)
+    if (dom.btnLoadMore) {
+        dom.btnLoadMore.addEventListener('click', loadMoreBooks);
+    }
 
     // Initial load: retrieve initial wishlist counter
     fetchWishlist(false);

@@ -24,7 +24,7 @@ class BookRepository:
             self._gateway = GoogleBooksGateway()
         return self._gateway
 
-    def search(self, keyword: str) -> List[Book]:
+    def search(self, keyword: str, start_index: int = 0) -> List[Book]:
         """Searches book catalog via Gateway and returns results as Domain Entity collection"""
         if not keyword or not keyword.strip():
             return []
@@ -32,14 +32,14 @@ class BookRepository:
         clean_keyword = keyword.strip()
 
         # 1. Query data via Google Books Gateway
-        raw_items = self.gateway.fetch_from_google(clean_keyword)
+        raw_items = self.gateway.fetch_from_google(clean_keyword, start_index=start_index)
         if raw_items:
             books = [b for item in raw_items if (b := self._parse_google_item(item))]
             if books:
                 return books
 
         # 2. Fallback via Open Library Gateway
-        raw_docs = self.gateway.fetch_from_open_library(clean_keyword)
+        raw_docs = self.gateway.fetch_from_open_library(clean_keyword, offset=start_index)
         if raw_docs:
             books = [b for doc in raw_docs if (b := self._parse_open_library_doc(doc))]
             if books:
