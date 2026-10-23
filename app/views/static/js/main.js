@@ -167,8 +167,9 @@ async function fetchWishlist(showLoader = true) {
         });
 
         // Fallback counter if count API was unavailable
-        if (!state.totalWishlistCount) {
-            dom.wishlistCounter.textContent = state.wishlistMap.size;
+        if (state.totalWishlistCount === undefined || state.totalWishlistCount === null) {
+            state.totalWishlistCount = state.wishlistMap.size;
+            dom.wishlistCounter.textContent = state.totalWishlistCount;
         }
 
         // Render if currently on wishlist tab
@@ -514,8 +515,37 @@ function updateSearchButtonsState() {
             btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
             btn.disabled = true;
             btn.removeAttribute('onclick');
+        } else {
+            const book = state.searchResults.find(b => b.id === bookId);
+            if (book) {
+                btn.className = 'button is-small is-primary is-outlined btn-action-primary';
+                btn.innerHTML = '<i class="fa-regular fa-heart mr-1"></i> Wishlist';
+                btn.disabled = false;
+                btn.setAttribute('data-book', escapeHtml(JSON.stringify(book)));
+                btn.onclick = function() { addToWishlist(this); };
+            }
         }
     });
+}
+
+/**
+ * Synchronizes wishlist counter badge directly from backend
+ */
+async function fetchWishlistCount() {
+    try {
+        const countRes = await fetch('/api/wishlist/count');
+        if (countRes.ok) {
+            const countData = await countRes.json();
+            if (typeof countData.count === 'number') {
+                state.totalWishlistCount = countData.count;
+                if (dom.wishlistCounter) {
+                    dom.wishlistCounter.textContent = state.totalWishlistCount;
+                }
+            }
+        }
+    } catch (e) {
+        // Fallback optimistic count remains intact
+    }
 }
 
 /**
@@ -550,13 +580,17 @@ async function addToWishlist(buttonElement) {
         if (response.ok) {
             showToast(`"${bookData.title}" added to wishlist!`, 'success');
             state.wishlistMap.set(bookData.id, bookData);
-            dom.wishlistCounter.textContent = state.wishlistMap.size;
+            state.totalWishlistCount = (state.totalWishlistCount || 0) + 1;
+            dom.wishlistCounter.textContent = state.totalWishlistCount;
 
             // Update button visual state
             buttonElement.className = 'button is-small btn-action-primary btn-in-wishlist';
             buttonElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
             buttonElement.disabled = true;
             buttonElement.removeAttribute('onclick');
+
+            // Sync counter directly from database in background
+            fetchWishlistCount();
         } else {
             showToast(result.error || 'Failed to add book to wishlist.', 'error');
         }
@@ -589,10 +623,28 @@ async function removeFromWishlist(bookId) {
             showToast(`"${bookTitle}" removed from wishlist.`, 'info');
 
             state.wishlistMap.delete(bookId);
-            dom.wishlistCounter.textContent = state.wishlistMap.size;
+            state.totalWishlistCount = Math.max(0, (state.totalWishlistCount || 1) - 1);
+            dom.wishlistCounter.textContent = state.totalWishlistCount;
 
-            // Re-render wishlist grid
-            renderWishlistGrid(Array.from(state.wishlistMap.values()));
+            // Remove card element directly from DOM
+            const cardEl = dom.wishlistBooksGrid.querySelector(`[data-book-id="${CSS.escape ? CSS.escape(bookId) : bookId}"]`);
+            if (cardEl) {
+                const col = cardEl.closest('.column');
+                if (col) {
+                    col.remove();
+                } else {
+                    cardEl.remove();
+                }
+            }
+
+            // Show empty state if count reached 0
+            if (state.totalWishlistCount === 0 || dom.wishlistBooksGrid.children.length === 0) {
+                dom.wishlistEmptyState.classList.remove('is-hidden');
+                if (dom.wishlistPagination) dom.wishlistPagination.classList.add('is-hidden');
+            }
+
+            updateSearchButtonsState();
+            fetchWishlistCount();
         } else {
             showToast(result.error || 'Failed to remove book.', 'error');
         }
