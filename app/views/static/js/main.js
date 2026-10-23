@@ -10,6 +10,7 @@ const state = {
     wishlistPage: 1,
     totalWishlistCount: 0,
     searchResults: [],
+    booksById: new Map(), // bookId -> bookObject
     wishlistMap: new Map(), // bookId -> bookObject
     wishlistIdSet: new Set() // Set of all book IDs in wishlist for O(1) membership checks
 };
@@ -302,6 +303,8 @@ async function handleSearch(keyword) {
         }
         const books = await response.json();
         state.searchResults = books;
+        state.booksById.clear();
+        books.forEach(b => state.booksById.set(b.id, b));
 
         renderSearchResults(books, false);
 
@@ -347,6 +350,7 @@ async function loadMoreBooks() {
 
         // Append to existing results
         state.searchResults = state.searchResults.concat(newBooks);
+        newBooks.forEach(b => state.booksById.set(b.id, b));
         renderSearchResults(newBooks, true);
 
         if (newBooks.length < 20) {
@@ -431,14 +435,14 @@ function createBookCardHTML(book, viewType) {
                 </button>
             `;
         } else {
-            // Encode book data safely into attribute
-            const bookJsonStr = escapeHtml(JSON.stringify(book));
+            // Register book in lookup map to avoid attribute parsing issues
+            state.booksById.set(book.id, book);
             actionButtonHTML = `
                 <button 
                     class="button is-small is-primary is-outlined btn-action-primary" 
                     id="btn-wishlist-${escapeHtml(book.id)}"
-                    data-book="${bookJsonStr}"
-                    onclick="addToWishlist(this)"
+                    data-book-id="${escapeHtml(book.id)}"
+                    onclick="addToWishlist('${escapeHtml(book.id)}')"
                 >
                     <i class="fa-regular fa-heart mr-1"></i> Wishlist
                 </button>
@@ -531,11 +535,12 @@ function updateSearchButtonsState() {
         } else {
             const book = state.searchResults.find(b => b.id === bookId);
             if (book) {
+                state.booksById.set(book.id, book);
                 btn.className = 'button is-small is-primary is-outlined btn-action-primary';
                 btn.innerHTML = '<i class="fa-regular fa-heart mr-1"></i> Wishlist';
                 btn.disabled = false;
-                btn.setAttribute('data-book', escapeHtml(JSON.stringify(book)));
-                btn.onclick = function() { addToWishlist(this); };
+                btn.setAttribute('data-book-id', bookId);
+                btn.onclick = function() { addToWishlist(bookId); };
             }
         }
     });
@@ -574,20 +579,52 @@ async function fetchWishlistCount() {
 /**
  * Adds book to wishlist via POST /api/wishlist
  */
-async function addToWishlist(buttonElement) {
-    const bookDataRaw = buttonElement.getAttribute('data-book');
-    if (!bookDataRaw) return;
+async function addToWishlist(target) {
+    let bookId = '';
+    let buttonElement = null;
 
-    let bookData;
-    try {
-        bookData = JSON.parse(bookDataRaw);
-    } catch (e) {
-        console.error('Error parsing book payload:', e);
+    if (typeof target === 'string') {
+        bookId = target;
+        buttonElement = document.getElementById(`btn-wishlist-${bookId}`);
+    } else if (target && target.nodeType) {
+        buttonElement = target;
+        bookId = buttonElement.getAttribute('data-book-id') || 
+                 (buttonElement.id ? buttonElement.id.replace('btn-wishlist-', '') : '');
+    }
+
+    if (!bookId) return;
+
+    // 1. Retrieve book object directly from memory state
+    let bookData = state.booksById.get(bookId) || state.searchResults.find(b => b.id === bookId);
+
+    // 2. Fallback: Parse data-book attribute if present (handling HTML entities)
+    if (!bookData && buttonElement) {
+        const raw = buttonElement.getAttribute('data-book');
+        if (raw) {
+            try {
+                const txt = document.createElement('textarea');
+                txt.innerHTML = raw;
+                bookData = JSON.parse(txt.value);
+            } catch (e) {
+                try {
+                    bookData = JSON.parse(raw);
+                } catch (e2) {
+                    console.error('Error parsing book payload fallback:', e2);
+                }
+            }
+        }
+    }
+
+    if (!bookData) {
+        console.error('Book data not found for ID:', bookId);
+        showToast('Gagal memproses data buku. Silakan coba cari ulang.', 'error');
         return;
     }
 
     // Set button loading indicator
-    buttonElement.classList.add('is-loading');
+    if (buttonElement) {
+        buttonElement.classList.add('is-loading');
+    }
 
     try {
         const response = await fetch('/api/wishlist', {
@@ -608,10 +645,12 @@ async function addToWishlist(buttonElement) {
             dom.wishlistCounter.textContent = state.totalWishlistCount;
 
             // Update button visual state
-            buttonElement.className = 'button is-small btn-action-primary btn-in-wishlist';
-            buttonElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
-            buttonElement.disabled = true;
-            buttonElement.removeAttribute('onclick');
+            if (buttonElement) {
+                buttonElement.className = 'button is-small btn-action-primary btn-in-wishlist';
+                buttonElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
+                buttonElement.disabled = true;
+                buttonElement.removeAttribute('onclick');
+            }
 
             // Sync counter directly from database in background
             fetchWishlistCount();
@@ -622,7 +661,9 @@ async function addToWishlist(buttonElement) {
         console.error('Error adding to wishlist:', err);
         showToast('Server connection failed while adding to wishlist.', 'error');
     } finally {
-        buttonElement.classList.remove('is-loading');
+        if (buttonElement) {
+            buttonElement.classList.remove('is-loading');
+        }
     }
 }
 
