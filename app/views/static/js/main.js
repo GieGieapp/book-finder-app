@@ -54,9 +54,20 @@ function escapeHtml(str) {
 }
 
 /**
- * Displays floating toast notifications
+ * Displays floating toast notifications (Single instance to prevent stacking)
  */
+let toastDismissTimeout = null;
+
 function showToast(message, type = 'info') {
+    if (!dom.toastContainer) return;
+
+    // Clear any existing toasts immediately so they never pile up
+    if (toastDismissTimeout) {
+        clearTimeout(toastDismissTimeout);
+        toastDismissTimeout = null;
+    }
+    dom.toastContainer.innerHTML = '';
+
     const toast = document.createElement('div');
     toast.className = `toast-msg toast-${type}`;
     
@@ -66,17 +77,26 @@ function showToast(message, type = 'info') {
 
     toast.innerHTML = `
         <i class="${iconClass}"></i>
-        <span>${escapeHtml(message)}</span>
+        <span class="toast-text">${escapeHtml(message)}</span>
+        <button class="toast-close" type="button" aria-label="Tutup">&times;</button>
     `;
+
+    // Click anywhere on toast to dismiss immediately
+    const dismiss = () => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.2s ease';
+        setTimeout(() => toast.remove(), 200);
+    };
+
+    toast.addEventListener('click', dismiss);
 
     dom.toastContainer.appendChild(toast);
 
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(15px)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    // Auto-dismiss smoothly after 2.2 seconds
+    toastDismissTimeout = setTimeout(() => {
+        dismiss();
+    }, 2200);
 }
 
 /**
