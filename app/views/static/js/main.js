@@ -1,5 +1,5 @@
 /**
- * main.js - Client-Side Logic untuk Book Finder & Wishlist App
+ * main.js - Client-Side Logic for Book Finder & Wishlist App
  */
 
 // State Management
@@ -41,7 +41,7 @@ const dom = {
 };
 
 /**
- * Utilitas Sanitasi String HTML untuk mencegah XSS
+ * HTML string sanitation utility to prevent XSS vulnerabilities
  */
 function escapeHtml(str) {
     if (!str) return '';
@@ -54,7 +54,7 @@ function escapeHtml(str) {
 }
 
 /**
- * Tampilkan Notifikasi Toast
+ * Displays floating toast notifications
  */
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
@@ -80,7 +80,7 @@ function showToast(message, type = 'info') {
 }
 
 /**
- * Tab Navigation
+ * Tab Navigation Handler
  */
 function switchTab(target) {
     if (target === 'search') {
@@ -107,7 +107,7 @@ function switchTab(target) {
 }
 
 /**
- * Fetch Wishlist dari Backend
+ * Fetches wishlist items from the backend API
  */
 async function fetchWishlist(showLoader = true) {
     if (showLoader) {
@@ -131,23 +131,23 @@ async function fetchWishlist(showLoader = true) {
         // Update badge counter
         dom.wishlistCounter.textContent = state.wishlistMap.size;
 
-        // Render jika sedang di tab wishlist
+        // Render if currently on wishlist tab
         if (state.currentTab === 'wishlist') {
             renderWishlistGrid(data);
         } else {
-            // Update status tombol pada tab search
+            // Update button states on search view
             updateSearchButtonsState();
         }
     } catch (err) {
-        console.error('Gagal mengambil wishlist:', err);
-        showToast('Gagal memuat wishlist dari database.', 'error');
+        console.error('Failed to retrieve wishlist:', err);
+        showToast('Failed to load wishlist from database.', 'error');
     } finally {
         dom.wishlistLoading.classList.add('is-hidden');
     }
 }
 
 /**
- * Render Kartu Buku di Tab Wishlist
+ * Renders book cards on the Wishlist tab grid
  */
 function renderWishlistGrid(books) {
     dom.wishlistBooksGrid.innerHTML = '';
@@ -170,11 +170,11 @@ function renderWishlistGrid(books) {
 }
 
 /**
- * Pencarian Buku via Google Books API
+ * Book search orchestration via backend API
  */
 async function handleSearch(keyword) {
     if (!keyword || !keyword.trim()) {
-        showToast('Masukkan kata kunci pencarian terlebih dahulu.', 'error');
+        showToast('Please enter a search keyword first.', 'error');
         dom.searchInput.focus();
         return;
     }
@@ -192,15 +192,15 @@ async function handleSearch(keyword) {
     try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(cleanKeyword)}`);
         if (!response.ok) {
-            throw new Error(`Gagal mencari buku. Status: ${response.status}`);
+            throw new Error(`Book search failed with status: ${response.status}`);
         }
         const books = await response.json();
         state.searchResults = books;
 
         renderSearchResults(books);
     } catch (err) {
-        console.error('Error saat mencari buku:', err);
-        showToast('Terjadi kesalahan saat mencari buku. Periksa koneksi internet.', 'error');
+        console.error('Error during book search:', err);
+        showToast('Error searching for books. Please check network connection.', 'error');
         dom.searchEmptyState.classList.remove('is-hidden');
     } finally {
         dom.btnSearchSubmit.classList.remove('is-loading');
@@ -209,22 +209,22 @@ async function handleSearch(keyword) {
 }
 
 /**
- * Render Hasil Pencarian Buku
+ * Renders search results on the Search tab grid
  */
 function renderSearchResults(books) {
     dom.searchBooksGrid.innerHTML = '';
 
     if (!books || books.length === 0) {
         dom.searchResultHeader.classList.remove('is-hidden');
-        dom.searchResultTitle.textContent = `Pencarian: "${state.lastSearchKeyword}"`;
-        dom.searchResultCount.textContent = '0 buku';
+        dom.searchResultTitle.textContent = `Search: "${state.lastSearchKeyword}"`;
+        dom.searchResultCount.textContent = '0 books';
 
         dom.searchBooksGrid.innerHTML = `
             <div class="column is-12">
                 <div class="status-box">
                     <div class="status-icon"><i class="fa-solid fa-face-meh"></i></div>
-                    <h3 class="status-title">Tidak ada buku ditemukan</h3>
-                    <p class="status-text">Coba gunakan kata kunci lain yang lebih umum atau periksa ejaan judul buku.</p>
+                    <h3 class="status-title">No books found</h3>
+                    <p class="status-text">Try using more generic keywords or verify book title spelling.</p>
                 </div>
             </div>
         `;
@@ -232,8 +232,8 @@ function renderSearchResults(books) {
     }
 
     dom.searchResultHeader.classList.remove('is-hidden');
-    dom.searchResultTitle.textContent = `Hasil untuk "${state.lastSearchKeyword}"`;
-    dom.searchResultCount.textContent = `${books.length} buku ditemukan`;
+    dom.searchResultTitle.textContent = `Results for "${state.lastSearchKeyword}"`;
+    dom.searchResultCount.textContent = `${books.length} books found`;
 
     books.forEach(book => {
         const col = document.createElement('div');
@@ -246,14 +246,14 @@ function renderSearchResults(books) {
 }
 
 /**
- * Template HTML untuk Kartu Buku
+ * HTML Card Component Template for Books
  */
 function createBookCardHTML(book, viewType) {
-    const authors = Array.isArray(book.authors) ? book.authors.join(', ') : (book.authors || 'Penulis Tidak Diketahui');
+    const authors = Array.isArray(book.authors) ? book.authors.join(', ') : (book.authors || 'Unknown Author');
     const isInWishlist = state.wishlistMap.has(book.id);
     const ratingValue = parseFloat(book.rating) || 0;
     const thumbnail = book.thumbnail || 'https://via.placeholder.com/128x192?text=No+Cover';
-    const description = book.description || 'Tidak ada ringkasan deskripsi tersedia untuk buku ini.';
+    const description = book.description || 'No summary description available for this book.';
 
     let actionButtonHTML = '';
     if (viewType === 'wishlist') {
@@ -261,9 +261,9 @@ function createBookCardHTML(book, viewType) {
             <button 
                 class="button is-small btn-action-primary btn-remove" 
                 onclick="removeFromWishlist('${escapeHtml(book.id)}')"
-                title="Hapus buku dari wishlist"
+                title="Remove book from wishlist"
             >
-                <i class="fa-solid fa-trash-can mr-1"></i> Hapus
+                <i class="fa-solid fa-trash-can mr-1"></i> Remove
             </button>
         `;
     } else {
@@ -274,7 +274,7 @@ function createBookCardHTML(book, viewType) {
                     id="btn-wishlist-${escapeHtml(book.id)}"
                     disabled
                 >
-                    <i class="fa-solid fa-check mr-1"></i> Di Wishlist
+                    <i class="fa-solid fa-check mr-1"></i> In Wishlist
                 </button>
             `;
         } else {
@@ -294,7 +294,7 @@ function createBookCardHTML(book, viewType) {
     }
 
     const infoLinkBtn = book.info_link ? `
-        <a href="${escapeHtml(book.info_link)}" target="_blank" rel="noopener noreferrer" class="button is-small is-light" title="Buka di Google Books">
+        <a href="${escapeHtml(book.info_link)}" target="_blank" rel="noopener noreferrer" class="button is-small is-light" title="View details">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
         </a>
     ` : '';
@@ -335,17 +335,17 @@ function createBookCardHTML(book, viewType) {
 }
 
 /**
- * Inisialisasi plugin rater-js pada setiap kontainer
+ * Initializes rater-js star rating plugin on elements
  */
 function initStarRatings(container) {
     if (typeof raterJs !== 'function') {
-        console.warn('raterJs belum siap.');
+        console.warn('raterJs plugin not loaded.');
         return;
     }
 
     const ratingElements = container.querySelectorAll('.star-rating');
     ratingElements.forEach(el => {
-        // Cek agar tidak double-init
+        // Prevent double initialization
         if (el.dataset.initialized === 'true') return;
 
         const ratingVal = parseFloat(el.getAttribute('data-rating')) || 0;
@@ -358,13 +358,13 @@ function initStarRatings(container) {
             });
             el.dataset.initialized = 'true';
         } catch (e) {
-            console.error('Gagal inisialisasi raterJs:', e);
+            console.error('Failed to initialize raterJs:', e);
         }
     });
 }
 
 /**
- * Update Status Tombol Wishlist pada Search Grid jika data wishlist berubah
+ * Synchronizes wishlist button states across search results grid
  */
 function updateSearchButtonsState() {
     const buttons = dom.searchBooksGrid.querySelectorAll('[id^="btn-wishlist-"]');
@@ -372,7 +372,7 @@ function updateSearchButtonsState() {
         const bookId = btn.id.replace('btn-wishlist-', '');
         if (state.wishlistMap.has(bookId)) {
             btn.className = 'button is-small btn-action-primary btn-in-wishlist';
-            btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Di Wishlist';
+            btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
             btn.disabled = true;
             btn.removeAttribute('onclick');
         }
@@ -380,7 +380,7 @@ function updateSearchButtonsState() {
 }
 
 /**
- * Tambah Buku ke Wishlist (POST /api/wishlist)
+ * Adds book to wishlist via POST /api/wishlist
  */
 async function addToWishlist(buttonElement) {
     const bookDataRaw = buttonElement.getAttribute('data-book');
@@ -390,11 +390,11 @@ async function addToWishlist(buttonElement) {
     try {
         bookData = JSON.parse(bookDataRaw);
     } catch (e) {
-        console.error('Error parse data buku:', e);
+        console.error('Error parsing book payload:', e);
         return;
     }
 
-    // Set loading state pada tombol
+    // Set button loading indicator
     buttonElement.classList.add('is-loading');
 
     try {
@@ -409,31 +409,31 @@ async function addToWishlist(buttonElement) {
         const result = await response.json();
 
         if (response.ok) {
-            showToast(`"${bookData.title}" berhasil ditambahkan ke wishlist!`, 'success');
+            showToast(`"${bookData.title}" added to wishlist!`, 'success');
             state.wishlistMap.set(bookData.id, bookData);
             dom.wishlistCounter.textContent = state.wishlistMap.size;
 
-            // Update UI tombol
+            // Update button visual state
             buttonElement.className = 'button is-small btn-action-primary btn-in-wishlist';
-            buttonElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Di Wishlist';
+            buttonElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
             buttonElement.disabled = true;
             buttonElement.removeAttribute('onclick');
         } else {
-            showToast(result.error || 'Gagal menambahkan buku ke wishlist.', 'error');
+            showToast(result.error || 'Failed to add book to wishlist.', 'error');
         }
     } catch (err) {
-        console.error('Gagal request tambah wishlist:', err);
-        showToast('Koneksi server gagal saat menambahkan wishlist.', 'error');
+        console.error('Error adding to wishlist:', err);
+        showToast('Server connection failed while adding to wishlist.', 'error');
     } finally {
         buttonElement.classList.remove('is-loading');
     }
 }
 
 /**
- * Hapus Buku dari Wishlist (DELETE /api/wishlist/<id>)
+ * Removes book from wishlist via DELETE /api/wishlist/<id>
  */
 async function removeFromWishlist(bookId) {
-    if (!confirm('Apakah Anda yakin ingin menghapus buku ini dari Wishlist?')) {
+    if (!confirm('Are you sure you want to remove this book from your wishlist?')) {
         return;
     }
 
@@ -446,20 +446,20 @@ async function removeFromWishlist(bookId) {
 
         if (response.ok) {
             const removedBook = state.wishlistMap.get(bookId);
-            const bookTitle = removedBook ? removedBook.title : 'Buku';
-            showToast(`"${bookTitle}" berhasil dihapus dari wishlist.`, 'info');
+            const bookTitle = removedBook ? removedBook.title : 'Book';
+            showToast(`"${bookTitle}" removed from wishlist.`, 'info');
 
             state.wishlistMap.delete(bookId);
             dom.wishlistCounter.textContent = state.wishlistMap.size;
 
-            // Re-render daftar wishlist
+            // Re-render wishlist grid
             renderWishlistGrid(Array.from(state.wishlistMap.values()));
         } else {
-            showToast(result.error || 'Gagal menghapus buku.', 'error');
+            showToast(result.error || 'Failed to remove book.', 'error');
         }
     } catch (err) {
-        console.error('Error saat menghapus wishlist:', err);
-        showToast('Terjadi kesalahan saat menghapus dari server.', 'error');
+        console.error('Error removing from wishlist:', err);
+        showToast('An error occurred while removing from server.', 'error');
     }
 }
 
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Refresh Wishlist Button
     dom.btnRefreshWishlist.addEventListener('click', () => {
         fetchWishlist(true);
-        showToast('Wishlist diperbarui.', 'info');
+        showToast('Wishlist refreshed.', 'info');
     });
 
     // Search Form Submit
@@ -491,6 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSearch(dom.searchInput.value);
     });
 
-    // Initial load: ambil jumlah wishlist
+    // Initial load: retrieve initial wishlist counter
     fetchWishlist(false);
 });

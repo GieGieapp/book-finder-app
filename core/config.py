@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
 
-# Deteksi root directory proyek
+# Resolve project root directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Deteksi Environment aktif dari sistem (mendukung FLASK_ENV atau APP_ENV, default: development)
+# Detect active runtime environment (supports FLASK_ENV or APP_ENV, defaults to development)
 RAW_ENV = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development").strip().lower()
 
-# Alias mapping agar singkatan seperti 'stg', 'prd', 'dev' otomatis dikenali
+# Environment alias mapping for standard abbreviation recognition
 ENV_ALIASES = {
     "dev": ("development", "dev"),
     "development": ("development", "dev"),
@@ -25,22 +25,18 @@ ENV_ALIASES = {
 
 target_variants = ENV_ALIASES.get(RAW_ENV, (RAW_ENV,))
 
-# Prioritas file env yang dicari:
-# 1. .env.<nama_variasi> (misal .env.staging atau .env.stg)
-# 2. .env (default fallback)
+# Candidate .env files prioritized by specificity
 env_candidates = [BASE_DIR / f".env.{var}" for var in target_variants] + [BASE_DIR / ".env"]
 
 try:
     from dotenv import load_dotenv
-    # Muat file env yang paling spesifik yang ditemukan pertama kali
+    # Load the most specific matching environment file
     for env_path in env_candidates:
         if env_path.exists():
             load_dotenv(dotenv_path=env_path, override=True)
             break
 except ImportError:
     pass
-
-
 
 from .constants import (
     DEFAULT_GOOGLE_BOOKS_API_URL,
@@ -50,7 +46,7 @@ from .constants import (
 
 
 class Config:
-    """Base Configuration (Default untuk semua stage)"""
+    """Base Configuration (Defaults across all environments)"""
     ENV_NAME = "base"
     SECRET_KEY = os.getenv("SECRET_KEY", "book-finder-super-secret-key-2026")
     MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -64,13 +60,12 @@ class Config:
     TEMPLATES_AUTO_RELOAD = False
 
 
-
 class DevelopmentConfig(Config):
     """
-    1. LOCAL DEVELOPMENT (dev)
-    - Debug mode aktif untuk hot-reload & error tracking
-    - Database lokal: book_finder_dev
-    - Auto reload templates HTML aktif
+    Local Development Environment (dev)
+    - Debug mode enabled for hot-reloading and tracing
+    - Dedicated development database: book_finder_dev
+    - HTML templates auto-reload enabled
     """
     ENV_NAME = "development"
     DEBUG = True
@@ -81,10 +76,10 @@ class DevelopmentConfig(Config):
 
 class StagingConfig(Config):
     """
-    2. STAGING / UAT SERVER (stg)
-    - Debug mode NONAKTIF (meniru production)
-    - Database terpisah untuk QA/UAT: book_finder_staging
-    - Log error tetap detail untuk kemudahan debugging tim QA
+    Staging / UAT Environment (stg)
+    - Debug mode disabled (mirrors production behavior)
+    - Isolated QA/UAT database: book_finder_staging
+    - Detailed error logging preserved for QA diagnostics
     """
     ENV_NAME = "staging"
     DEBUG = False
@@ -97,10 +92,10 @@ class StagingConfig(Config):
 
 class ProductionConfig(Config):
     """
-    3. LIVE PRODUCTION (prd)
-    - Debug mode NONAKTIF 100% (mencegah kebocoran traceback / data sensitif)
-    - Database Production terproteksi: book_finder_prod
-    - Proteksi keamanan cookie sesi (HttpOnly & SameSite Lax)
+    Live Production Environment (prd)
+    - Strict debug mode disabled (prevents sensitive traceback exposure)
+    - Production database: book_finder_prod
+    - Enhanced session cookie security (HttpOnly, Secure, SameSite)
     """
     ENV_NAME = "production"
     DEBUG = False
@@ -116,9 +111,9 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     """
-    4. AUTOMATED TESTING (test)
-    - Mode testing aktif (Flask test client)
-    - Database khusus testing terisolasi: book_finder_test_db
+    Automated Testing Environment (test)
+    - Flask testing mode enabled
+    - Isolated in-memory/test database: book_finder_test_db
     """
     ENV_NAME = "testing"
     DEBUG = False
@@ -126,7 +121,7 @@ class TestingConfig(Config):
     MONGO_DB_NAME = "book_finder_test_db"
 
 
-# Mapping Environment Name / Alias ke Configuration Class
+# Environment Name / Alias to Configuration Class Mapping
 CONFIG_MAP = {
     # Development aliases
     "development": DevelopmentConfig,
@@ -151,8 +146,7 @@ CONFIG_MAP = {
 
 
 def get_config(env_name=None):
-    """Mengambil configuration class yang tepat berdasarkan nama environment"""
+    """Resolves and returns appropriate Configuration class for target environment"""
     if env_name is None:
         env_name = os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development"
     return CONFIG_MAP.get(str(env_name).strip().lower(), DevelopmentConfig)
-
