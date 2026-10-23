@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from core.config import get_config
-from infrastructure.database import db_manager, get_db
+from infrastructure.database import db_manager
 from core.errors import register_error_handlers
 from core.logger import setup_logging
 
@@ -43,18 +43,11 @@ def create_app(config_class=None):
     @app.route("/health", methods=["GET"])
     @app.route("/api/health", methods=["GET"])
     def health_check():
-        db_status = "connected"
-        try:
-            db = get_db()
-            db.command("ping")
-        except Exception:
-            db_status = "disconnected"
-
-        is_healthy = db_status == "connected"
+        is_healthy = db_manager.ping()
         return jsonify({
             "status": "healthy" if is_healthy else "degraded",
-            "environment": app.config.get("ENV", "development"),
-            "database": db_status
+            "environment": app.config.get("ENV_NAME", "development"),
+            "database": "connected" if is_healthy else "disconnected"
         }), 200
 
     return app

@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, create_autospec
 
+from core.constants import DEFAULT_UNKNOWN_AUTHOR
 from core.errors import DomainValidationError
 from app.wishlist.models import WishlistItem
 from app.wishlist.schemas import WishlistItemSchema, WishlistItemDTO
@@ -54,7 +55,7 @@ class TestWishlistService(unittest.TestCase):
         result = service.add_to_wishlist(payload)
 
         self.assertEqual(result["id"], "book_defaults")
-        self.assertEqual(result["authors"], ["Penulis Tidak Diketahui"])
+        self.assertEqual(result["authors"], [DEFAULT_UNKNOWN_AUTHOR])
         self.assertEqual(result["rating"], 0.0)
         mock_repo.upsert.assert_called_once()
 

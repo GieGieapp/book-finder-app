@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import json
 from http import HTTPStatus
 from flask import Flask
@@ -33,13 +33,9 @@ class TestViewsModule(unittest.TestCase):
 
 
 class TestHealthCheckEndpoint(unittest.TestCase):
-    @patch("app.get_db")
-    def test_health_check_healthy_positive(self, mock_get_db):
+    @patch("app.db_manager.ping", return_value=True)
+    def test_health_check_healthy_positive(self, mock_ping):
         # Positive: Returns status healthy when database responds to ping
-        mock_db = MagicMock()
-        mock_db.command.return_value = {"ok": 1.0}
-        mock_get_db.return_value = mock_db
-
         with patch("infrastructure.database.db_manager.init_app"):
             app = create_app()
             client = app.test_client()
@@ -49,12 +45,11 @@ class TestHealthCheckEndpoint(unittest.TestCase):
             data = json.loads(response.data)
             self.assertEqual(data["status"], "healthy")
             self.assertEqual(data["database"], "connected")
+            mock_ping.assert_called_once()
 
-    @patch("app.get_db")
-    def test_health_check_degraded_negative(self, mock_get_db):
+    @patch("app.db_manager.ping", return_value=False)
+    def test_health_check_degraded_negative(self, mock_ping):
         # Negative: Returns status degraded when database is unreachable
-        mock_get_db.side_effect = Exception("Database connection failure")
-
         with patch("infrastructure.database.db_manager.init_app"):
             app = create_app()
             client = app.test_client()
@@ -64,6 +59,7 @@ class TestHealthCheckEndpoint(unittest.TestCase):
             data = json.loads(response.data)
             self.assertEqual(data["status"], "degraded")
             self.assertEqual(data["database"], "disconnected")
+            mock_ping.assert_called_once()
 
 
 if __name__ == "__main__":
