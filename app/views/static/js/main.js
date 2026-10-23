@@ -27,7 +27,6 @@ const dom = {
     btnSearchSubmit: document.getElementById('btn-search-submit'),
     searchResultHeader: document.getElementById('search-result-header'),
     searchResultTitle: document.getElementById('search-result-title'),
-    searchResultCount: document.getElementById('search-result-count'),
     searchLoading: document.getElementById('search-loading'),
     searchEmptyState: document.getElementById('search-empty-state'),
     searchBooksGrid: document.getElementById('search-books-grid'),
@@ -359,7 +358,6 @@ function renderSearchResults(books, append = false) {
     if (!append && (!books || books.length === 0)) {
         dom.searchResultHeader.classList.remove('is-hidden');
         dom.searchResultTitle.textContent = `Search: "${state.lastSearchKeyword}"`;
-        dom.searchResultCount.textContent = '0 books';
 
         dom.searchBooksGrid.innerHTML = `
             <div class="column is-12">
@@ -375,7 +373,6 @@ function renderSearchResults(books, append = false) {
 
     dom.searchResultHeader.classList.remove('is-hidden');
     dom.searchResultTitle.textContent = `Results for "${state.lastSearchKeyword}"`;
-    dom.searchResultCount.textContent = `${state.searchResults.length} books found`;
 
     books.forEach(book => {
         const col = document.createElement('div');
