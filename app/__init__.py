@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify
 from core.config import get_config
 from infrastructure.database import db_manager
@@ -14,10 +15,11 @@ def create_app(config_class=None):
     Application Factory Pattern
     Initializes core platform extensions, domain blueprints, and error handlers.
     """
+    base_dir = os.path.abspath(os.path.dirname(__file__))
     app = Flask(
         __name__,
-        template_folder="views/templates",
-        static_folder="views/static"
+        template_folder=os.path.join(base_dir, "views", "templates"),
+        static_folder=os.path.join(base_dir, "views", "static")
     )
 
     # 1. Configuration
