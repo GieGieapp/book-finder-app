@@ -18,6 +18,6 @@ if __name__ == '__main__':
     print(f"🌍 Mode / Environment : {env_name.upper()} (DEBUG={debug_mode})", flush=True)
     print(f"🗄️ Database           : {db_name}", flush=True)
     print("👉 Buka di browser     : http://localhost:5001", flush=True)
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 7860))
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
 

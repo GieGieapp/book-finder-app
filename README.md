@@ -1,3 +1,13 @@
+---
+title: Book Finder App
+emoji: 📖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Book Finder App
 
 A book catalog search and wishlist management application built with Flask and MongoDB.
