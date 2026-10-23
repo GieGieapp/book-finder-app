@@ -52,14 +52,16 @@ class MongoWishlistRepository:
         try:
             cursor = self.collection.find({}, {"id": 1, "_id": 0})
             return [doc["id"] for doc in cursor if isinstance(doc, dict) and "id" in doc and doc["id"]]
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to retrieve wishlist IDs from database: %s", exc)
             return []
 
     def count_all(self) -> int:
         """Returns total count of wishlist items in database"""
         try:
             return self.collection.count_documents({})
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to count wishlist documents from database: %s", exc)
             return 0
 
     def delete_by_id(self, book_id: str) -> bool:

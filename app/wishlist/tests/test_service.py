@@ -204,6 +204,18 @@ class TestMongoWishlistRepository(unittest.TestCase):
         self.assertEqual(ids, ["w1", "w2"])
         self.mock_collection.find.assert_called_with({}, {"id": 1, "_id": 0})
 
+    def test_repository_get_all_ids_database_error_negative(self):
+        # Negative: Returns empty list and logs warning on database failure
+        self.mock_collection.find.side_effect = RuntimeError("Database timeout")
+        ids = self.repo.get_all_ids()
+        self.assertEqual(ids, [])
+
+    def test_repository_count_all_database_error_negative(self):
+        # Negative: Returns 0 and logs warning on count failure
+        self.mock_collection.count_documents.side_effect = RuntimeError("Database connection refused")
+        count = self.repo.count_all()
+        self.assertEqual(count, 0)
+
     def test_repository_delete_by_id_positive(self):
         # Positive: Returns True when document is successfully deleted
         mock_result = MagicMock()
