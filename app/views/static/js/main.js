@@ -10,7 +10,8 @@ const state = {
     wishlistPage: 1,
     totalWishlistCount: 0,
     searchResults: [],
-    wishlistMap: new Map() // bookId -> bookObject
+    wishlistMap: new Map(), // bookId -> bookObject
+    wishlistIdSet: new Set() // Set of all book IDs in wishlist for O(1) membership checks
 };
 
 // DOM Elements
@@ -146,12 +147,23 @@ async function fetchWishlist(showLoader = true) {
     state.wishlistPage = 1;
 
     try {
-        // 1. Fetch total count
-        const countRes = await fetch('/api/wishlist/count');
+        // 1. Fetch total count & all wishlist IDs in parallel
+        const [countRes, idsRes] = await Promise.all([
+            fetch('/api/wishlist/count'),
+            fetch('/api/wishlist/ids')
+        ]);
+
         if (countRes.ok) {
             const countData = await countRes.json();
             state.totalWishlistCount = countData.count || 0;
             dom.wishlistCounter.textContent = state.totalWishlistCount;
+        }
+
+        if (idsRes.ok) {
+            const idsData = await idsRes.json();
+            if (Array.isArray(idsData.ids)) {
+                state.wishlistIdSet = new Set(idsData.ids);
+            }
         }
 
         // 2. Fetch first page of wishlist items (20 items)
@@ -217,6 +229,7 @@ async function loadMoreWishlist() {
         }
 
         newItems.forEach(book => {
+            state.wishlistIdSet.add(book.id);
             state.wishlistMap.set(book.id, book);
         });
 
@@ -390,7 +403,7 @@ function renderSearchResults(books, append = false) {
  */
 function createBookCardHTML(book, viewType) {
     const authors = Array.isArray(book.authors) ? book.authors.join(', ') : (book.authors || 'Unknown Author');
-    const isInWishlist = state.wishlistMap.has(book.id);
+    const isInWishlist = state.wishlistIdSet.has(book.id) || state.wishlistMap.has(book.id);
     const ratingValue = parseFloat(book.rating) || 0;
     const thumbnail = book.thumbnail || 'https://via.placeholder.com/128x192?text=No+Cover';
     const description = book.description || 'No summary description available for this book.';
@@ -510,7 +523,7 @@ function updateSearchButtonsState() {
     const buttons = dom.searchBooksGrid.querySelectorAll('[id^="btn-wishlist-"]');
     buttons.forEach(btn => {
         const bookId = btn.id.replace('btn-wishlist-', '');
-        if (state.wishlistMap.has(bookId)) {
+        if (state.wishlistIdSet.has(bookId) || state.wishlistMap.has(bookId)) {
             btn.className = 'button is-small btn-action-primary btn-in-wishlist';
             btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> In Wishlist';
             btn.disabled = true;
@@ -533,7 +546,10 @@ function updateSearchButtonsState() {
  */
 async function fetchWishlistCount() {
     try {
-        const countRes = await fetch('/api/wishlist/count');
+        const [countRes, idsRes] = await Promise.all([
+            fetch('/api/wishlist/count'),
+            fetch('/api/wishlist/ids')
+        ]);
         if (countRes.ok) {
             const countData = await countRes.json();
             if (typeof countData.count === 'number') {
@@ -541,6 +557,13 @@ async function fetchWishlistCount() {
                 if (dom.wishlistCounter) {
                     dom.wishlistCounter.textContent = state.totalWishlistCount;
                 }
+            }
+        }
+        if (idsRes.ok) {
+            const idsData = await idsRes.json();
+            if (Array.isArray(idsData.ids)) {
+                state.wishlistIdSet = new Set(idsData.ids);
+                updateSearchButtonsState();
             }
         }
     } catch (e) {
@@ -579,6 +602,7 @@ async function addToWishlist(buttonElement) {
 
         if (response.ok) {
             showToast(`"${bookData.title}" added to wishlist!`, 'success');
+            state.wishlistIdSet.add(bookData.id);
             state.wishlistMap.set(bookData.id, bookData);
             state.totalWishlistCount = (state.totalWishlistCount || 0) + 1;
             dom.wishlistCounter.textContent = state.totalWishlistCount;
@@ -622,6 +646,7 @@ async function removeFromWishlist(bookId) {
             const bookTitle = removedBook ? removedBook.title : 'Book';
             showToast(`"${bookTitle}" removed from wishlist.`, 'info');
 
+            state.wishlistIdSet.delete(bookId);
             state.wishlistMap.delete(bookId);
             state.totalWishlistCount = Math.max(0, (state.totalWishlistCount || 1) - 1);
             dom.wishlistCounter.textContent = state.totalWishlistCount;

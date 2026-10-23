@@ -36,6 +36,14 @@ def get_wishlist_count():
     return jsonify({"count": count}), HTTPStatus.OK
 
 
+@wishlist_bp.route('/wishlist/ids', methods=['GET'])
+@wishlist_bp.route('/api/wishlist/ids', methods=['GET'])
+def get_wishlist_ids():
+    """Returns array of all wishlist book IDs for client-side state checking"""
+    ids = wishlist_service.get_wishlist_ids()
+    return jsonify({"ids": ids}), HTTPStatus.OK
+
+
 @wishlist_bp.route('/wishlist', methods=['POST'])
 @wishlist_bp.route('/api/wishlist', methods=['POST'])
 def add_to_wishlist():

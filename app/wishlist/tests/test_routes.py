@@ -40,6 +40,17 @@ class TestWishlistRoutes(unittest.TestCase):
         mock_wishlist_service.get_all_wishlists.assert_called_once()
 
     @patch("app.wishlist.routes.wishlist_service", autospec=True)
+    def test_get_wishlist_ids_positive(self, mock_wishlist_service):
+        # Positive: /api/wishlist/ids returns 200 OK and list of string IDs
+        mock_wishlist_service.get_wishlist_ids.return_value = ["w_1", "w_2"]
+
+        response = self.client.get("/api/wishlist/ids")
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        data = json.loads(response.data)
+        self.assertEqual(data["ids"], ["w_1", "w_2"])
+        mock_wishlist_service.get_wishlist_ids.assert_called_once()
+
+    @patch("app.wishlist.routes.wishlist_service", autospec=True)
     def test_add_to_wishlist_success_positive(self, mock_wishlist_service):
         # Positive: Valid book JSON returns 201 Created and response message
         mock_wishlist_service.add_to_wishlist.return_value = {

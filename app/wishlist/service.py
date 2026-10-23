@@ -46,6 +46,12 @@ class WishlistService:
             return self.repository.count_all()
         return len(self.get_all_wishlists())
 
+    def get_wishlist_ids(self) -> List[str]:
+        """Returns list of all book IDs in wishlist for membership check"""
+        if hasattr(self.repository, "get_all_ids"):
+            return self.repository.get_all_ids()
+        return [item["id"] for item in self.get_all_wishlists() if "id" in item]
+
     def remove_from_wishlist(self, book_id: str) -> bool:
         """Removes a book from the wishlist by book ID"""
         clean_id = str(book_id).strip() if book_id else ""

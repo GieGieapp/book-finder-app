@@ -86,6 +86,16 @@ class TestWishlistService(unittest.TestCase):
         self.assertEqual(items, [])
         mock_repo.find_all.assert_called_once()
 
+    def test_get_wishlist_ids_positive(self):
+        # Positive: Returns list of IDs from repository
+        mock_repo = create_autospec(MongoWishlistRepository)
+        mock_repo.get_all_ids.return_value = ["id_1", "id_2"]
+
+        service = WishlistService(repository=mock_repo)
+        ids = service.get_wishlist_ids()
+        self.assertEqual(ids, ["id_1", "id_2"])
+        mock_repo.get_all_ids.assert_called_once()
+
     def test_remove_from_wishlist_success_positive(self):
         # Positive: Deletion succeeds when repository returns True
         mock_repo = create_autospec(MongoWishlistRepository)
@@ -182,6 +192,17 @@ class TestMongoWishlistRepository(unittest.TestCase):
         self.assertEqual(len(items), 2)
         self.assertEqual(items[0].id, "w1")
         self.assertEqual(items[1].id, "w2")
+
+    def test_repository_get_all_ids_positive(self):
+        # Positive: Returns list of strings extracted from collection projection
+        self.mock_collection.find.return_value = [
+            {"id": "w1"},
+            {"id": "w2"},
+            {"invalid": "no_id"}
+        ]
+        ids = self.repo.get_all_ids()
+        self.assertEqual(ids, ["w1", "w2"])
+        self.mock_collection.find.assert_called_with({}, {"id": 1, "_id": 0})
 
     def test_repository_delete_by_id_positive(self):
         # Positive: Returns True when document is successfully deleted
