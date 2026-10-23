@@ -32,14 +32,20 @@ class BookRepository:
         clean_keyword = keyword.strip()
 
         # 1. Query data via Google Books Gateway
-        raw_items = self.gateway.fetch_from_google(clean_keyword, start_index=start_index)
+        if start_index > 0:
+            raw_items = self.gateway.fetch_from_google(clean_keyword, start_index=start_index)
+        else:
+            raw_items = self.gateway.fetch_from_google(clean_keyword)
         if raw_items:
             books = [b for item in raw_items if (b := self._parse_google_item(item))]
             if books:
                 return books
 
         # 2. Fallback via Open Library Gateway
-        raw_docs = self.gateway.fetch_from_open_library(clean_keyword, offset=start_index)
+        if start_index > 0:
+            raw_docs = self.gateway.fetch_from_open_library(clean_keyword, offset=start_index)
+        else:
+            raw_docs = self.gateway.fetch_from_open_library(clean_keyword)
         if raw_docs:
             books = [b for doc in raw_docs if (b := self._parse_open_library_doc(doc))]
             if books:
